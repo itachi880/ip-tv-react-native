@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useVideoPlayer, VideoView } from "expo-video";
 import {
   StyleSheet,
@@ -32,17 +32,17 @@ export default function Player({}) {
 
   const player = useVideoPlayer(
     {
-      uri: currentChannel.link,
+      uri: currentChannel.link || "",
       headers: {
         Referer: currentChannel.referer || "",
       },
     },
     (player) => {
+      player.currentTime = player.duration - 10;
       player.play();
     }
   );
 
-  // Use an effect to periodically update the slider based on the player's progress.
   useEffect(() => {
     return () => {
       if (timer) clearInterval(timer);
@@ -96,6 +96,7 @@ const styles = StyleSheet.create({
     width: "100%",
     color: "#000",
     paddingTop: 5,
+    zIndex: 1,
   },
   controlsContainer: {
     position: "absolute",
@@ -161,6 +162,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     borderRadius: 3,
     width: "70%",
+    position: "absolute",
+    zIndex: 5,
+    top: 0,
   },
   eBtn: {
     width: 50,
@@ -211,7 +215,7 @@ function Settings({ qualities = [], selectedQuality = null, onQualityChange }) {
             borderTopLeftRadius: 5,
           }}
         >
-          <View style={{ width: 150 }}>
+          <View style={{ width: 150, position: "relative" }}>
             <Text
               style={{
                 color: "white",
@@ -229,15 +233,49 @@ function Settings({ qualities = [], selectedQuality = null, onQualityChange }) {
                   : "auto"}
               </Text>
             </Text>
+            <View style={styles.settingItemSelect}>
+              <TouchableOpacity>
+                <Text
+                  style={{ color: "white" }}
+                  onPress={() => console.log("cliked")}
+                >
+                  hello
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity>
+                <Text
+                  style={{ color: "white" }}
+                  onPress={() => console.log("cliked")}
+                >
+                  hello
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity>
+                <Text
+                  style={{ color: "white" }}
+                  onPress={() => console.log("cliked")}
+                >
+                  hello
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity>
+                <Text onPress={() => console.log("cliked")}>hello</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </View>
     </View>
   );
 }
+/**
+ *
+ * @param {object} param0
+ * @param {ReturnType<useVideoPlayer>} param0.player
+ * @returns
+ */
 function Controls({ player, setFullScreen, isFullScreen }) {
   const [isPlayed, setIsPlayed] = useState(player.playing ?? false);
-  const [slider, setSlider] = useState(0);
   const [isLive, setIsLive] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -247,6 +285,16 @@ function Controls({ player, setFullScreen, isFullScreen }) {
     player.currentTime = player.duration - 10;
     setIsLive(true);
   }, [isLive]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!player) return;
+      console.log(player.currentTime, player.duration);
+      setIsPlayed(player.playing);
+    }, 500);
+    return () => clearInterval(timer);
+  });
+
   return (
     <View style={styles.controlsContainer}>
       <Slider
@@ -256,9 +304,9 @@ function Controls({ player, setFullScreen, isFullScreen }) {
         minimumTrackTintColor="#f00"
         minimumValue={0}
         maximumValue={0.999}
-        value={slider}
+        value={+(player.currentTime / player.duration)}
         onValueChange={(value) => {
-          setSlider(value);
+          if (!player) return;
           player.currentTime = value * player.duration;
         }}
       />
@@ -272,7 +320,7 @@ function Controls({ player, setFullScreen, isFullScreen }) {
             }}
           >
             <Text style={{ textAlign: "center", color: "#fff" }}>
-              LIVE{" "}
+              LIVE
               <FontAwesomeIcon
                 size={10}
                 icon={faCircle}
@@ -317,6 +365,13 @@ function Controls({ player, setFullScreen, isFullScreen }) {
         <View style={styles.right}>
           <TouchableOpacity onPress={() => setShowSettings((prev) => !prev)}>
             <FontAwesomeIcon icon={faGear} color="#fff" />
+            {showSettings && (
+              <Settings
+                onQualityChange={() => {}}
+                qualities={[]}
+                selectedQuality={"auto"}
+              />
+            )}
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => {
@@ -333,3 +388,35 @@ function Controls({ player, setFullScreen, isFullScreen }) {
     </View>
   );
 }
+// import React, { useState } from 'react';
+// import { View, Text, StyleSheet, Platform } from 'react-native';
+// import RNPickerSelect from 'react-native-picker-select';
+
+// const SelectDialogExample = () => {
+//   const [selectedValue, setSelectedValue] = useState(null);
+
+//   const handleValueChange = (value) => {
+//     setSelectedValue(value);
+//   };
+
+//   return (
+//     <View style={styles.container}>
+//       <Text style={styles.text}>Select an option:</Text>
+//       <RNPickerSelect
+//         onValueChange={handleValueChange}
+//         items={[
+//           { label: 'Option 1', value: 'option1' },
+//           { label: 'Option 2', value: 'option2' },
+//           { label: 'Option 3', value: 'option3' },
+//         ]}
+//         value={selectedValue}
+//         useNativeAndroidPickerStyle={false} // Disable native Android style if you want custom styling
+//         placeholder={{
+//           label: 'Select a value...',
+//           value: null,
+//         }}
+//       />
+//       <Text style={styles.selectedValue}>Selected Value: {selectedValue}</Text>
+//     </View>
+//   );
+// };

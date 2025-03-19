@@ -33,12 +33,8 @@
           "supportsBackgroundPlayback": true,
           "supportsPictureInPicture": true
         }
-      ]
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "ab3460dd-ccce-455a-9a96-304c63cdb287"
-      }
-    }
+      ],
+      ["expo-document-picker"]
+    ]
   }
 }

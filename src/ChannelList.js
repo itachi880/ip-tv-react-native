@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   FlatList,
   StyleSheet,
   GestureResponderEvent,
+  Keyboard,
 } from "react-native";
 // @ts-ignore
 import Icon from "react-native-vector-icons/FontAwesome";
@@ -20,31 +21,51 @@ const ChannelsList = ({
   const handleFileUpload = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: "application/*",
+        copyToCacheDirectory: true,
       });
-
-      if (result.type === "success") {
-        const fileUri = result.uri;
-        console.log("File uploaded:", fileUri);
-
-        const fileContent = await fetch(fileUri).then((res) => res.text());
-        const parsedChannels = m3u8Parser(fileContent);
-        console.log(parsedChannels);
-
-        await insertChannels(parsedChannels);
-
-        alert("File uploaded and channels inserted!");
-      } else {
+      if (result.canceled) {
         console.log("File upload was canceled");
+        return;
       }
+      const fileUri = result.assets[0].uri;
+
+      const fileContent = await fetch(fileUri).then((res) => res.text());
+      const parsedChannels = m3u8Parser(fileContent);
+      console.log(
+        parsedChannels.map((e) => {
+          delete e.quality;
+          return e;
+        })
+      );
+
+      await insertChannels(parsedChannels);
+
+      alert("File uploaded and channels inserted!");
     } catch (error) {
       console.error("Error uploading file:", error);
     }
   };
 
+  console.log(Keyboard);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const handleKeyPress = (e) => {
+    // Handle key presses for up/down navigation
+    if (e.nativeEvent.key === "ArrowUp" && currentItem > 0) {
+      setSelectedIndex(currentItem - 1);
+    } else if (
+      e.nativeEvent.key === "ArrowDown" &&
+      currentItem < items.length - 1
+    ) {
+      setSelectedIndex(currentItem + 1);
+    } else if (e.nativeEvent.key === "Enter") {
+      console.log(`Selected: ${items[currentItem]}`); // Action on "Enter"
+    }
+  };
+  useEffect(() => {}, [Keyboard]);
   return (
     <View style={styles.container}>
       {/* Search bar */}
+
       <View style={styles.searchBar}>
         <Icon name="search" />
         <TextInput
@@ -55,8 +76,14 @@ const ChannelsList = ({
       </View>
 
       {/* Upload button */}
-      <TouchableOpacity style={styles.uploadButton}>
-        <Text style={styles.uploadButtonText}>+ Upload Channels File</Text>
+      <TouchableOpacity
+        style={[styles.uploadButton]}
+        onPress={handleFileUpload}
+        onFocus={() => {
+          setSelectedIndex(1);
+        }}
+      >
+        <Text style={[styles.uploadButtonText]}>+ Upload Channels File</Text>
       </TouchableOpacity>
 
       <FlatList
@@ -73,10 +100,7 @@ const ChannelsList = ({
           />
         )}
         ListFooterComponent={
-          <TouchableOpacity
-            style={styles.loadMoreButton}
-            onPress={handleFileUpload}
-          >
+          <TouchableOpacity style={styles.loadMoreButton}>
             <Text style={styles.loadMoreText}>Load More</Text>
           </TouchableOpacity>
         }
@@ -85,7 +109,17 @@ const ChannelsList = ({
   );
 };
 
-const Channel = ({ name, state, number, link, refferer, onPress }) => {
+const Channel = ({
+  name,
+  state,
+  number,
+  link,
+  refferer,
+  onPress,
+  index,
+  selectedIndex,
+}) => {
+  const [isFocuse, setIsFocuse] = useState(index == selectedIndex);
   return (
     <TouchableOpacity
       onPress={(e) => {
@@ -93,7 +127,6 @@ const Channel = ({ name, state, number, link, refferer, onPress }) => {
         onPress(e, { name, state, number, link, refferer });
       }}
       style={styles.channel}
-      onFocus={() => console.log("focuse")}
     >
       <Text style={styles.channelText}>
         {`${number} : ${name}`} {state === "OK" ? "✅" : "❓"}

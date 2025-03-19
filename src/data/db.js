@@ -1,13 +1,16 @@
 import * as SQLite from "expo-sqlite";
 
 // Open a database
+/**
+ * @type {SQLite.SQLiteDatabase}
+ */
 let db; // Declare db outside of functions for reuse
 
 // Open the database
 const openDatabase = async () => {
   try {
     // Open the database (this should be a single call for reuse)
-    db = SQLite.openDatabase("mydb.db");
+    db = await SQLite.openDatabaseAsync("ip_tv");
     console.log("Database opened");
     await createTables(); // Ensure the table exists
   } catch (error) {
@@ -18,17 +21,15 @@ const openDatabase = async () => {
 // Function to create tables just in case
 const createTables = async () => {
   try {
-    await db.transaction((tx) => {
-      tx.executeSql(
-        `CREATE TABLE IF NOT EXISTS channels (
+    await db.execAsync(
+      `CREATE TABLE IF NOT EXISTS channels (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
           referer TEXT,
           link TEXT NOT NULL UNIQUE,
           state TEXT
         );`
-      );
-    });
+    );
     console.log("Table created successfully");
   } catch (error) {
     console.error("Error creating table:", error);
@@ -36,22 +37,6 @@ const createTables = async () => {
 };
 
 // Helper function to wrap database queries in Promises
-const runQuery = async (query, params = []) => {
-  try {
-    return new Promise((resolve, reject) => {
-      db.transaction((tx) => {
-        tx.executeSql(
-          query,
-          params,
-          (_, result) => resolve(result), // On success
-          (_, error) => reject(error) // On error
-        );
-      });
-    });
-  } catch (error) {
-    throw new Error(`Error running query: ${error.message}`);
-  }
-};
 
 // Function to run a query and fetch all results
 const allQuery = async (query, params = []) => {
@@ -67,9 +52,14 @@ const allQuery = async (query, params = []) => {
 const insertChannels = async (channels) => {
   for (const channel of channels) {
     try {
-      await runQuery(
+      await db.runAsync(
         `INSERT INTO channels (name, referer, link, state) VALUES (?, ?, ?, ?)`,
-        [channel.name, channel.referer || null, channel.link, channel.state]
+        [
+          channel.name,
+          channel.referer || null,
+          channel.link,
+          channel.state || null,
+        ]
       );
     } catch (error) {
       console.error("Error inserting channel:", error.message);
@@ -80,7 +70,7 @@ const insertChannels = async (channels) => {
 // ✅ Fetch all channels
 const getAllChannels = async () => {
   try {
-    return await allQuery("SELECT * FROM channels");
+    return await db.getAllAsync("SELECT * FROM channels");
   } catch (error) {
     console.error("Error fetching channels:", error.message);
     return [];
@@ -90,7 +80,7 @@ const getAllChannels = async () => {
 // Fetch channels with pagination
 const getChannelsPaginated = async (limit, offset) => {
   try {
-    return await allQuery("SELECT * FROM channels LIMIT ? OFFSET ?", [
+    return await db.getAllAsync("SELECT * FROM channels LIMIT ? OFFSET ?", [
       limit,
       offset,
     ]);
@@ -103,9 +93,10 @@ const getChannelsPaginated = async (limit, offset) => {
 // Search channels by name
 const searchChannelsByName = async (query) => {
   try {
-    return await allQuery("SELECT * FROM channels WHERE LOWER(name) LIKE ?", [
-      `%${query.toLowerCase()}%`,
-    ]);
+    return await db.getAllAsync(
+      "SELECT * FROM channels WHERE LOWER(name) LIKE ?",
+      [`%${query.toLowerCase()}%`]
+    );
   } catch (error) {
     console.error("Error searching channels:", error.message);
     return [];
