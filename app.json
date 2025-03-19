@@ -3,7 +3,7 @@
     "name": "my-project",
     "slug": "my-project",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "landscap",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -19,13 +19,26 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.itachi880.myproject"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-video"
-    ]
+      "expo-sqlite",
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": true,
+          "supportsPictureInPicture": true
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ab3460dd-ccce-455a-9a96-304c63cdb287"
+      }
+    }
   }
 }

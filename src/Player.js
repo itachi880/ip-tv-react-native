@@ -1,217 +1,335 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { useVideoPlayer, VideoView } from "expo-video";
 import {
+  StyleSheet,
   View,
   Text,
-  StyleSheet,
-  TouchableOpacity,
   Dimensions,
+  TouchableOpacity,
 } from "react-native";
-import { useVideoPlayer, VideoPlayer } from "expo-video";
 import Slider from "@react-native-community/slider";
-// @ts-ignore
-import Icon from "react-native-vector-icons/FontAwesome";
+import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
+import {
+  faBackwardFast,
+  faCircle,
+  faForwardFast,
+  faGear,
+  faPause,
+  faPlay,
+  faUpRightAndDownLeftFromCenter,
+} from "@fortawesome/free-solid-svg-icons";
+import { fullScreenFlag } from "./data/flags";
+import { currentChannelStore } from "./data/data";
 
-const src =
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+const videoWidth = Dimensions.get("window").width * 0.5;
 
-const Player = ({ link, refferer }) => {
-  console.log("Using data:", { link, refferer });
-  const player = useVideoPlayer(src, (player) => {
-    player.loop = true;
-    player.play();
-  });
-  const videoRef = useRef < VideoPlayer > null;
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [quality, setQuality] = (useState < string) | (null > null);
-  const [videoSource, setVideoSource] = useState(link); // Start with adaptive link
+export default function Player({}) {
+  const [isFullScreen, setFullScreen] = fullScreenFlag.useStore();
+  console.log("player init");
+  let timer;
 
-  // Device screen dimensions
-  const { width, height } = Dimensions.get("window");
-  const videoHeight = height * 0.5;
+  const [currentChannel, setCurrentChannel] = currentChannelStore.useStore();
 
-  // Play/Pause Handler
-  const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
-  };
-
-  // Handle progress updates
-  const handleProgress = (data) => {
-    if (duration > 0) {
-      setProgress(data.positionMillis / duration);
+  const player = useVideoPlayer(
+    {
+      uri: currentChannel.link,
+      headers: {
+        Referer: currentChannel.referer || "",
+      },
+    },
+    (player) => {
+      player.play();
     }
-  };
+  );
 
-  // Get video duration when loaded
-  const handleLoad = (meta) => {
-    setDuration(meta.durationMillis);
-  };
-
-  // Handle Quality Selection (Locking Quality)
-  const handleQualityChange = (quality) => {
-    let newSource = link; // Default to adaptive
-    if (quality === "low") {
-      newSource = "https://path.to/your/low_quality.m3u8";
-    } else if (quality === "medium") {
-      newSource = "https://path.to/your/medium_quality.m3u8";
-    } else if (quality === "high") {
-      newSource = "https://path.to/your/high_quality.m3u8";
-    }
-
-    setVideoSource(newSource);
-    setQuality(
-      quality === "auto" ? "Auto" : `${quality.toUpperCase()} Quality`
-    );
-  };
-
-  // Seek video
-  const handleSeek = (value) => {
-    if (videoRef.current) {
-      videoRef.current.setPositionAsync(value * duration);
-    }
-  };
+  // Use an effect to periodically update the slider based on the player's progress.
+  useEffect(() => {
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [player]); // Ensure player is available when releasing
 
   return (
-    <View style={styles.container}>
-      <Video
-        ref={videoRef}
-        source={{
-          uri: videoSource,
-          headers: refferer ? { Referer: refferer } : {},
-        }}
+    <View
+      style={
+        isFullScreen.flag ? styles.fullScreenContainer : styles.contentContainer
+      }
+    >
+      <VideoView
         style={styles.video}
-        shouldPlay={isPlaying}
-        resizeMode="cover"
-        onPlaybackStatusUpdate={handleProgress}
-        onLoad={handleLoad}
-        isLooping
+        player={player}
+        allowsFullscreen
+        allowsPictureInPicture
+        nativeControls={false}
       />
-
-      {/* Custom Controls */}
-      <View style={styles.controls}>
-        <View style={styles.controlRow}>
-          <TouchableOpacity style={styles.buttonText}>
-            <Text style={{ color: "#fff" }}>
-              LIVE <Icon name="dot-circle-o" color="#fff" />
-            </Text>
-          </TouchableOpacity>
-
-          {/* Play/Pause */}
-          <View style={styles.playControls}>
-            <TouchableOpacity
-              onPress={handlePlayPause}
-              style={styles.buttonText}
-            >
-              <Icon name="backward" size={15} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handlePlayPause}
-              style={styles.buttonText}
-            >
-              {!isPlaying ? (
-                <Icon name="play-circle-o" size={20} color="#fff" />
-              ) : (
-                <Icon name="pause-circle-o" size={20} color="#fff" />
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handlePlayPause}
-              style={styles.buttonText}
-            >
-              <Icon name="forward" size={15} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Settings - Quality Selection */}
-          <TouchableOpacity
-            style={styles.buttonText}
-            onPress={() => handleQualityChange("auto")}
-          >
-            <Text style={{ color: "#fff" }}>Auto</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.buttonText}
-            onPress={() => handleQualityChange("low")}
-          >
-            <Text style={{ color: "#fff" }}>480p</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.buttonText}
-            onPress={() => handleQualityChange("medium")}
-          >
-            <Text style={{ color: "#fff" }}>720p</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.buttonText}
-            onPress={() => handleQualityChange("high")}
-          >
-            <Text style={{ color: "#fff" }}>1080p</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Progress Bar */}
-        <Slider
-          style={styles.slider}
-          value={progress}
-          onValueChange={handleSeek}
-          minimumValue={0}
-          maximumValue={1}
-        />
-
-        {/* Quality Display */}
-        {quality && <Text style={styles.qualityText}>Quality: {quality}</Text>}
-      </View>
+      <Controls
+        player={player}
+        setFullScreen={setFullScreen}
+        isFullScreen={isFullScreen}
+      />
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
+  contentContainer: {
+    width: videoWidth,
+    height: videoWidth * (9 / 16),
+    position: "relative",
     backgroundColor: "red",
+  },
+  fullScreenContainer: {
     position: "absolute",
-    right: 0,
-    width: Dimensions.get("window").height * 0.5 * (16 / 9),
-    height: Dimensions.get("window").height * 0.5,
-    overflow: "visible",
+    ...Dimensions.get("window"),
+    scale: 1,
+    fontScale: 1,
   },
   video: {
-    backgroundColor: "black",
     width: "100%",
     height: "100%",
-  },
-  controls: {
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    position: "absolute",
-    bottom: 0,
-    width: "100%",
-    height: Dimensions.get("window").height * 0.5 * 0.2,
-  },
-  controlRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    width: "100%",
-    paddingHorizontal: 10,
-  },
-  playControls: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonText: {
-    color: "white",
-    paddingHorizontal: 5,
+    borderRadius: 0,
+    borderWidth: 1,
+    borderColor: "white",
+    backgroundColor: "red",
   },
   slider: {
     width: "100%",
+    color: "#000",
+    paddingTop: 5,
   },
-  qualityText: {
+  controlsContainer: {
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    paddingBottom: 5,
+    borderTopColor: "white",
+    borderTopWidth: 0.5,
+    paddingInline: 5,
+  },
+  btns: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingInline: 30,
+    paddingBlock: 10,
+  },
+  left: {
+    display: "flex",
+    alignItems: "flex-start",
+  },
+  center: {
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "10",
+  },
+  right: {
+    display: "flex",
+    flexDirection: "row",
+    gap: 10,
+  },
+  settingsMenu: {
+    position: "absolute",
+    bottom: 40,
+    right: 0,
+    backgroundColor: "rgba(20, 20, 20, 0.7)",
     color: "white",
+    padding: 15,
+    borderRadius: 5,
+    minWidth: 150,
+    zIndex: 10,
+    pointerEvents: "none",
+  },
+  settingItem: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+    gap: 10,
+    flexDirection: "row",
+  },
+  settingItemLabel: {
     fontSize: 14,
-    marginTop: 5,
+  },
+  settingItemSelect: {
+    backgroundColor: "black",
+    color: "white",
+    borderWidth: 1,
+    padding: 5,
+    fontSize: 14,
+    borderRadius: 3,
+    width: "70%",
+  },
+  eBtn: {
+    width: 50,
+    height: 20,
+    backgroundColor: "white",
+    borderRadius: 20,
+    position: "relative",
+  },
+  eBtnBefore: {
+    content: "",
+    width: 25,
+    height: 25,
+    backgroundColor: "#0075ff",
+    position: "absolute",
+    top: "-50%",
+    borderRadius: "50%",
+    left: "100%",
+    boxShadow: "0 0 8px 1px #000",
+    transition: "left 0.1s linear",
   },
 });
 
-export default Player;
+function Settings({ qualities = [], selectedQuality = null, onQualityChange }) {
+  const [qualitySelected, setSelectedQuality] = useState(
+    !selectedQuality ? "auto" : selectedQuality
+  );
+  const [showQualitys, setShowQualitys] = useState(true);
+  return (
+    <View style={styles.settingsMenu} pointerEvents="none">
+      <Text
+        style={{
+          color: "#fff",
+          borderBottomColor: "#fff",
+          borderBottomWidth: 1,
+          paddingBottom: 5,
+          marginBottom: 5,
+        }}
+      >
+        Settings
+      </Text>
+      <View style={styles.settingItem}>
+        <Text style={{ color: "#fff" }}>Quality:</Text>
+        <View
+          style={{
+            position: "relative",
+            backgroundColor: "black",
+            borderTopRightRadius: 5,
+            borderTopLeftRadius: 5,
+          }}
+        >
+          <View style={{ width: 150 }}>
+            <Text
+              style={{
+                color: "white",
+                padding: 5,
+                borderBottomWidth: 1,
+                borderBottomColor: showQualitys ? "white" : "black",
+                paddingInline: 10,
+                textAlign: "center",
+              }}
+              onPress={() => setShowQualitys((prev) => !prev)}
+            >
+              <Text style={{ width: "90%" }}>
+                {qualitySelected !== "auto"
+                  ? qualitySelected[0].split("x")[1] + "p"
+                  : "auto"}
+              </Text>
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+function Controls({ player, setFullScreen, isFullScreen }) {
+  const [isPlayed, setIsPlayed] = useState(player.playing ?? false);
+  const [slider, setSlider] = useState(0);
+  const [isLive, setIsLive] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  useEffect(() => {
+    if (isLive) return;
+    if (player.currentTime + 10 >= player.duration) return setIsLive(true);
+    player.currentTime = player.duration - 10;
+    setIsLive(true);
+  }, [isLive]);
+  return (
+    <View style={styles.controlsContainer}>
+      <Slider
+        style={styles.slider}
+        thumbTintColor="#f00"
+        maximumTrackTintColor="#f00"
+        minimumTrackTintColor="#f00"
+        minimumValue={0}
+        maximumValue={0.999}
+        value={slider}
+        onValueChange={(value) => {
+          setSlider(value);
+          player.currentTime = value * player.duration;
+        }}
+      />
+      <View style={styles.btns}>
+        <View style={styles.left}>
+          <TouchableOpacity
+            onPress={() => {
+              setIsLive(true);
+              if (!player) return;
+              player.currentTime = player.duration - 10;
+            }}
+          >
+            <Text style={{ textAlign: "center", color: "#fff" }}>
+              LIVE{" "}
+              <FontAwesomeIcon
+                size={10}
+                icon={faCircle}
+                color={isLive ? "#f00" : "#fff"}
+              />
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.center}>
+          <TouchableOpacity
+            onPress={() => {
+              if (!player) return;
+              if (player.currentTime - 10 < 0) return;
+              player.currentTime -= 10;
+            }}
+          >
+            <FontAwesomeIcon icon={faBackwardFast} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              if (!player) return;
+              if (!isPlayed) {
+                player.play();
+              } else {
+                player.pause();
+              }
+              setIsPlayed((prev) => !prev);
+            }}
+          >
+            <FontAwesomeIcon icon={isPlayed ? faPause : faPlay} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              if (!player) return;
+              if (player.currentTime + 10 >= player.duration) return;
+              player.currentTime += 10;
+            }}
+          >
+            <FontAwesomeIcon icon={faForwardFast} color="#fff" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.right}>
+          <TouchableOpacity onPress={() => setShowSettings((prev) => !prev)}>
+            <FontAwesomeIcon icon={faGear} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              setFullScreen({ flag: !isFullScreen.flag });
+            }}
+          >
+            <FontAwesomeIcon
+              icon={faUpRightAndDownLeftFromCenter}
+              color="#fff"
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+}

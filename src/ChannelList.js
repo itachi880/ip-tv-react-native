@@ -1,15 +1,18 @@
+import React from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   FlatList,
+  StyleSheet,
   GestureResponderEvent,
 } from "react-native";
 // @ts-ignore
 import Icon from "react-native-vector-icons/FontAwesome";
 import { insertChannels, m3u8Parser } from "./data/db";
 import * as DocumentPicker from "expo-document-picker";
+
 const ChannelsList = ({
   displayedChannels = [],
   onChannelClick = () => {},
@@ -17,18 +20,17 @@ const ChannelsList = ({
   const handleFileUpload = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: "application/*", // Accept any type of document
+        type: "application/*",
       });
 
       if (result.type === "success") {
         const fileUri = result.uri;
         console.log("File uploaded:", fileUri);
 
-        // Read the content of the file (this depends on the type of file you're handling)
         const fileContent = await fetch(fileUri).then((res) => res.text());
         const parsedChannels = m3u8Parser(fileContent);
         console.log(parsedChannels);
-        // Insert the parsed channels into the database
+
         await insertChannels(parsedChannels);
 
         alert("File uploaded and channels inserted!");
@@ -41,21 +43,22 @@ const ChannelsList = ({
   };
 
   return (
-    <View className="h-full w-[40%]  overflow-y-auto overflow-x-hidden border border-white bg-black p-2">
+    <View style={styles.container}>
       {/* Search bar */}
-      <View className="channel speciale-input sticky top-0 mb-2 flex flex-row items-center gap-2 bg-white  px-4 ">
+      <View style={styles.searchBar}>
         <Icon name="search" />
         <TextInput
           placeholder="Search channel"
           cursorColor={"#000"}
-          className="h-full w-[97%] border-none py-1 outline-none"
+          style={styles.input}
         />
       </View>
 
       {/* Upload button */}
-      <TouchableOpacity className="mb-2 bg-white p-2 px-4">
-        <Text className="text-black">+ Upload Channels File</Text>
+      <TouchableOpacity style={styles.uploadButton}>
+        <Text style={styles.uploadButtonText}>+ Upload Channels File</Text>
       </TouchableOpacity>
+
       <FlatList
         data={displayedChannels}
         keyExtractor={(item) => Math.random() + ""}
@@ -66,15 +69,15 @@ const ChannelsList = ({
             state={item.state}
             link={item.link}
             refferer={item.referer}
-            onPress={(e, item) => onChannelClick(item)}
+            onPress={(e) => onChannelClick(item)}
           />
         )}
         ListFooterComponent={
           <TouchableOpacity
-            className="mt-2 items-center bg-blue-600 p-2"
+            style={styles.loadMoreButton}
             onPress={handleFileUpload}
           >
-            <Text className="text-white">Load More</Text>
+            <Text style={styles.loadMoreText}>Load More</Text>
           </TouchableOpacity>
         }
       />
@@ -87,23 +90,69 @@ const Channel = ({ name, state, number, link, refferer, onPress }) => {
     <TouchableOpacity
       onPress={(e) => {
         if (!onPress) return;
-        onPress(e, {
-          name,
-          state,
-          number,
-          link,
-          refferer,
-        });
+        onPress(e, { name, state, number, link, refferer });
       }}
-      className="channel mb-1 cursor-pointer rounded border border-white p-2"
+      style={styles.channel}
       onFocus={() => console.log("focuse")}
     >
-      <Text className=" text-white">
-        {`${number} : ${name}`}
-        {state === "OK" ? "✅" : "❓"}
+      <Text style={styles.channelText}>
+        {`${number} : ${name}`} {state === "OK" ? "✅" : "❓"}
       </Text>
     </TouchableOpacity>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    height: "100%",
+    width: "40%",
+    borderColor: "white",
+    borderWidth: 1,
+    backgroundColor: "black",
+    padding: 8,
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  input: {
+    flex: 1,
+    height: "100%",
+    borderWidth: 0,
+    paddingVertical: 4,
+    outlineStyle: "none",
+  },
+  uploadButton: {
+    marginBottom: 8,
+    backgroundColor: "white",
+    padding: 8,
+    paddingHorizontal: 16,
+  },
+  uploadButtonText: {
+    color: "black",
+  },
+  loadMoreButton: {
+    marginTop: 8,
+    alignItems: "center",
+    backgroundColor: "#2563EB",
+    padding: 8,
+  },
+  loadMoreText: {
+    color: "white",
+  },
+  channel: {
+    marginBottom: 4,
+    borderRadius: 4,
+    borderColor: "white",
+    borderWidth: 1,
+    padding: 8,
+  },
+  channelText: {
+    color: "white",
+  },
+});
 
 export default ChannelsList;
