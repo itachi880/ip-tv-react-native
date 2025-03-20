@@ -13,11 +13,10 @@ import {
 import Icon from "react-native-vector-icons/FontAwesome";
 import { insertChannels, m3u8Parser } from "./data/db";
 import * as DocumentPicker from "expo-document-picker";
+import { channelsStore } from "./data/data";
 
-const ChannelsList = ({
-  displayedChannels = [],
-  onChannelClick = () => {},
-}) => {
+const ChannelsList = ({ onChannelClick = () => {} }) => {
+  const displayedChannels = channelsStore.useStore({ setter: false });
   const handleFileUpload = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -46,7 +45,7 @@ const ChannelsList = ({
     }
   };
 
-  console.log(Keyboard);
+  console.log(Keyboard, displayedChannels);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const handleKeyPress = (e) => {
     // Handle key presses for up/down navigation
@@ -87,7 +86,7 @@ const ChannelsList = ({
       </TouchableOpacity>
 
       <FlatList
-        data={displayedChannels}
+        data={displayedChannels.channels}
         keyExtractor={(item) => Math.random() + ""}
         renderItem={({ item, index }) => (
           <Channel

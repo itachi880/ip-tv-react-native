@@ -6,3 +6,4 @@ export const currentChannelStore = createStore({
   quality: null,
   qualities: [],
 });
+export const channelsStore = createStore({ channels: [] });

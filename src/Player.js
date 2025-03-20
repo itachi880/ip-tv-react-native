@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useVideoPlayer, VideoView } from "expo-video";
+import { useVideoPlayer, VideoPlayer, VideoView } from "expo-video";
 import {
   StyleSheet,
   View,
@@ -23,32 +23,35 @@ import { currentChannelStore } from "./data/data";
 
 const videoWidth = Dimensions.get("window").width * 0.5;
 
-export default function Player({}) {
+/**
+ *
+ * @param {object} param0
+ * @param {VideoPlayer} param0.player
+ * @returns
+ */
+export default function Player({ player }) {
   const [isFullScreen, setFullScreen] = fullScreenFlag.useStore();
   console.log("player init");
   let timer;
 
   const [currentChannel, setCurrentChannel] = currentChannelStore.useStore();
 
-  const player = useVideoPlayer(
-    {
-      uri: currentChannel.link || "",
-      headers: {
-        Referer: currentChannel.referer || "",
-      },
-    },
-    (player) => {
-      player.currentTime = player.duration - 10;
-      player.play();
-    }
-  );
-
   useEffect(() => {
+    if (!player) return;
+    player.play();
     return () => {
       if (timer) clearInterval(timer);
     };
   }, [player]); // Ensure player is available when releasing
-
+  useEffect(() => {
+    if (!player) return;
+    player.replace({
+      uri: currentChannel.link ?? "",
+      headers: {
+        Referer: currentChannel.referer || "",
+      },
+    });
+  }, [currentChannel, player]);
   return (
     <View
       style={
@@ -70,122 +73,6 @@ export default function Player({}) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  contentContainer: {
-    width: videoWidth,
-    height: videoWidth * (9 / 16),
-    position: "relative",
-    backgroundColor: "red",
-  },
-  fullScreenContainer: {
-    position: "absolute",
-    ...Dimensions.get("window"),
-    scale: 1,
-    fontScale: 1,
-  },
-  video: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 0,
-    borderWidth: 1,
-    borderColor: "white",
-    backgroundColor: "red",
-  },
-  slider: {
-    width: "100%",
-    color: "#000",
-    paddingTop: 5,
-    zIndex: 1,
-  },
-  controlsContainer: {
-    position: "absolute",
-    bottom: 0,
-    width: "100%",
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
-    paddingBottom: 5,
-    borderTopColor: "white",
-    borderTopWidth: 0.5,
-    paddingInline: 5,
-  },
-  btns: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingInline: 30,
-    paddingBlock: 10,
-  },
-  left: {
-    display: "flex",
-    alignItems: "flex-start",
-  },
-  center: {
-    display: "flex",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "10",
-  },
-  right: {
-    display: "flex",
-    flexDirection: "row",
-    gap: 10,
-  },
-  settingsMenu: {
-    position: "absolute",
-    bottom: 40,
-    right: 0,
-    backgroundColor: "rgba(20, 20, 20, 0.7)",
-    color: "white",
-    padding: 15,
-    borderRadius: 5,
-    minWidth: 150,
-    zIndex: 10,
-    pointerEvents: "none",
-  },
-  settingItem: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
-    gap: 10,
-    flexDirection: "row",
-  },
-  settingItemLabel: {
-    fontSize: 14,
-  },
-  settingItemSelect: {
-    backgroundColor: "black",
-    color: "white",
-    borderWidth: 1,
-    padding: 5,
-    fontSize: 14,
-    borderRadius: 3,
-    width: "70%",
-    position: "absolute",
-    zIndex: 5,
-    top: 0,
-  },
-  eBtn: {
-    width: 50,
-    height: 20,
-    backgroundColor: "white",
-    borderRadius: 20,
-    position: "relative",
-  },
-  eBtnBefore: {
-    content: "",
-    width: 25,
-    height: 25,
-    backgroundColor: "#0075ff",
-    position: "absolute",
-    top: "-50%",
-    borderRadius: "50%",
-    left: "100%",
-    boxShadow: "0 0 8px 1px #000",
-    transition: "left 0.1s linear",
-  },
-});
 
 function Settings({ qualities = [], selectedQuality = null, onQualityChange }) {
   const [qualitySelected, setSelectedQuality] = useState(
@@ -388,35 +275,118 @@ function Controls({ player, setFullScreen, isFullScreen }) {
     </View>
   );
 }
-// import React, { useState } from 'react';
-// import { View, Text, StyleSheet, Platform } from 'react-native';
-// import RNPickerSelect from 'react-native-picker-select';
-
-// const SelectDialogExample = () => {
-//   const [selectedValue, setSelectedValue] = useState(null);
-
-//   const handleValueChange = (value) => {
-//     setSelectedValue(value);
-//   };
-
-//   return (
-//     <View style={styles.container}>
-//       <Text style={styles.text}>Select an option:</Text>
-//       <RNPickerSelect
-//         onValueChange={handleValueChange}
-//         items={[
-//           { label: 'Option 1', value: 'option1' },
-//           { label: 'Option 2', value: 'option2' },
-//           { label: 'Option 3', value: 'option3' },
-//         ]}
-//         value={selectedValue}
-//         useNativeAndroidPickerStyle={false} // Disable native Android style if you want custom styling
-//         placeholder={{
-//           label: 'Select a value...',
-//           value: null,
-//         }}
-//       />
-//       <Text style={styles.selectedValue}>Selected Value: {selectedValue}</Text>
-//     </View>
-//   );
-// };
+const styles = StyleSheet.create({
+  contentContainer: {
+    width: videoWidth,
+    height: videoWidth * (9 / 16),
+    position: "relative",
+    backgroundColor: "red",
+  },
+  fullScreenContainer: {
+    position: "absolute",
+    ...Dimensions.get("window"),
+    scale: 1,
+    fontScale: 1,
+  },
+  video: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 0,
+    borderWidth: 1,
+    borderColor: "white",
+    backgroundColor: "red",
+  },
+  slider: {
+    width: "100%",
+    color: "#000",
+    paddingTop: 5,
+    zIndex: 1,
+  },
+  controlsContainer: {
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    paddingBottom: 5,
+    borderTopColor: "white",
+    borderTopWidth: 0.5,
+    paddingInline: 5,
+  },
+  btns: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingInline: 30,
+    paddingBlock: 10,
+  },
+  left: {
+    display: "flex",
+    alignItems: "flex-start",
+  },
+  center: {
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "10",
+  },
+  right: {
+    display: "flex",
+    flexDirection: "row",
+    gap: 10,
+  },
+  settingsMenu: {
+    position: "absolute",
+    bottom: 40,
+    right: 0,
+    backgroundColor: "rgba(20, 20, 20, 0.7)",
+    color: "white",
+    padding: 15,
+    borderRadius: 5,
+    minWidth: 150,
+    zIndex: 10,
+    pointerEvents: "none",
+  },
+  settingItem: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+    gap: 10,
+    flexDirection: "row",
+  },
+  settingItemLabel: {
+    fontSize: 14,
+  },
+  settingItemSelect: {
+    backgroundColor: "black",
+    color: "white",
+    borderWidth: 1,
+    padding: 5,
+    fontSize: 14,
+    borderRadius: 3,
+    width: "70%",
+    position: "absolute",
+    zIndex: 5,
+    top: 0,
+  },
+  eBtn: {
+    width: 50,
+    height: 20,
+    backgroundColor: "white",
+    borderRadius: 20,
+    position: "relative",
+  },
+  eBtnBefore: {
+    content: "",
+    width: 25,
+    height: 25,
+    backgroundColor: "#0075ff",
+    position: "absolute",
+    top: "-50%",
+    borderRadius: "50%",
+    left: "100%",
+    boxShadow: "0 0 8px 1px #000",
+    transition: "left 0.1s linear",
+  },
+});
