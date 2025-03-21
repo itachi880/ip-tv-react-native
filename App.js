@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Dimensions, View, BackHandler } from "react-native";
 import {
   openDatabase,
@@ -17,6 +17,7 @@ import { createVideoPlayer } from "expo-video";
 import ChannelsList from "./src/ChannelList";
 import Player from "./src/Player";
 import LoadingBar from "./src/LoadingBar";
+import PopUp from "./src/PopUp";
 
 export default function App() {
   const setChannelsData = channelsStore.useStore({ getter: false });
@@ -28,6 +29,7 @@ export default function App() {
       setFullScreen({ flag: false });
       return true;
     }
+    BackHandler.exitApp();
   };
 
   // Exit full screen on back button press
@@ -75,17 +77,11 @@ export default function App() {
     return () => {
       player.removeAllListeners("statusChange");
       player.release();
-      BackHandler.removeEventListener("hardwareBackPress", exitFullScreen);
+      // BackHandler.removeEventListener("hardwareBackPress", exitFullScreen);
     };
   }, [player]);
 
   const { width, height } = Dimensions.get("window");
-
-  // Create refs for focus handling
-  const channelsListRef = useRef(null);
-  const playerRef = useRef(null);
-
-  // TVEventHandler to handle remote key events
 
   return (
     <View
@@ -101,7 +97,6 @@ export default function App() {
       }}
     >
       <ChannelsList
-        ref={channelsListRef}
         onChannelClick={async (item) => {
           console.log("change to :", item);
           setFullScreen({ flag: true });
@@ -109,14 +104,9 @@ export default function App() {
           const qualities = await getChannelQualitys(item.link, item.referer);
           setCurrentChannel({ ...item, qualities });
         }}
-        focusable={true} // Make it focusable
-        hasTVPreferredFocus={true} // Give it initial focus if needed
       />
-      <Player
-        ref={playerRef}
-        player={player}
-        focusable={true} // Make it focusable
-      />
+      <Player player={player} />
+      <PopUp />
       <LoadingBar />
     </View>
   );

@@ -5,3 +5,4 @@ export const dbOffset = {
   offset: 0,
 };
 export const loadingFlag = createStore({ flag: false });
+export const popupflagStrore = createStore({ flag: false, content: [] });

@@ -11,6 +11,7 @@ import Slider from "@react-native-community/slider";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import {
   faBackwardFast,
+  faCheck,
   faCircle,
   faForwardFast,
   faGear,
@@ -18,7 +19,7 @@ import {
   faPlay,
   faUpRightAndDownLeftFromCenter,
 } from "@fortawesome/free-solid-svg-icons";
-import { fullScreenFlag } from "./data/flags";
+import { fullScreenFlag, popupflagStrore } from "./data/flags";
 import { currentChannelStore } from "./data/data";
 import { updateChannelState } from "./data/db";
 
@@ -53,8 +54,15 @@ export default function Player({ player }) {
 
   useEffect(() => {
     if (!player) return;
+    let url = currentChannel.link;
+    if (currentChannel.quality) {
+      url = url.split("/");
+      url[url.length - 1] = currentChannel.quality;
+      url = url.join("/");
+    }
+    console.log(currentChannel, url);
     player.replace({
-      uri: currentChannel.link ?? "",
+      uri: url ?? "",
       headers: {
         Referer: currentChannel.referer || "",
       },
@@ -85,108 +93,18 @@ export default function Player({ player }) {
   );
 }
 
-function Settings({
-  qualities = [],
-  selectedQuality = null,
-  onQualityChange = () => {},
-}) {
-  const [qualitySelected, setSelectedQuality] = useState(
-    !selectedQuality ? "auto" : selectedQuality
-  );
-  const [showQualitys, setShowQualitys] = useState(true);
-  return (
-    <View style={styles.settingsMenu} pointerEvents="none">
-      <Text
-        style={{
-          color: "#fff",
-          borderBottomColor: "#fff",
-          borderBottomWidth: 1,
-          paddingBottom: 5,
-          marginBottom: 5,
-        }}
-      >
-        Settings
-      </Text>
-      <View style={styles.settingItem}>
-        <Text style={{ color: "#fff" }}>Quality:</Text>
-        <View
-          style={{
-            position: "relative",
-            backgroundColor: "black",
-            borderTopRightRadius: 5,
-            borderTopLeftRadius: 5,
-          }}
-        >
-          <View style={{ width: 150, position: "relative" }}>
-            <Text
-              style={{
-                color: "white",
-                padding: 5,
-                borderBottomWidth: 1,
-                borderBottomColor: showQualitys ? "white" : "black",
-                paddingInline: 10,
-                textAlign: "center",
-              }}
-              onPress={() => setShowQualitys((prev) => !prev)}
-            >
-              <Text style={{ width: "90%" }}>
-                {qualitySelected !== "auto"
-                  ? qualitySelected[0].split("x")[1] + "p"
-                  : "auto"}
-              </Text>
-            </Text>
-            <View style={styles.settingItemSelect}>
-              <TouchableOpacity>
-                <Text
-                  style={{ color: "white" }}
-                  onPress={() => console.log("cliked")}
-                >
-                  hello
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity>
-                <Text
-                  style={{ color: "white" }}
-                  onPress={() => console.log("cliked")}
-                >
-                  hello
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity>
-                <Text
-                  style={{ color: "white" }}
-                  onPress={() => console.log("cliked")}
-                >
-                  hello
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity>
-                <Text onPress={() => console.log("cliked")}>hello</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-}
 /**
  *
  * @param {object} param0
  * @param {ReturnType<useVideoPlayer>} param0.player
  * @returns
  */
-function Controls({
-  player,
-  setFullScreen,
-  isFullScreen,
-  showControlls,
-  setShowControlls,
-}) {
+function Controls({ player, setFullScreen, isFullScreen, showControlls }) {
   const [isPlayed, setIsPlayed] = useState(player.playing ?? false);
   const [isLive, setIsLive] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-
+  let showSettings = false;
+  const currentChannel = currentChannelStore.useStore({ setter: false });
+  const setPopupData = popupflagStrore.useStore({ getter: false });
   useEffect(() => {
     if (isLive) return;
     if (player.currentTime + 10 >= player.duration) return setIsLive(true);
@@ -198,8 +116,9 @@ function Controls({
     // const timer = setTimeout(() => {
     //   setShowControlls(false);
     // }, 5000);
-    return () => clearTimeout(timer);
+    // return () => clearTimeout(timer);
   }, []);
+
   useEffect(() => {
     const timer = setInterval(() => {
       if (!player) return;
@@ -218,10 +137,14 @@ function Controls({
       }
     >
       <Slider
+        focusable={false}
+        tvFocusable={false}
+        isTVSelectable={false}
         style={styles.slider}
         thumbTintColor="#f00"
         maximumTrackTintColor="#f00"
         minimumTrackTintColor="#f00"
+        disabled={true}
         minimumValue={0}
         maximumValue={0.999}
         value={+(player.currentTime / player.duration)}
@@ -233,6 +156,14 @@ function Controls({
       <View style={styles.btns}>
         <View style={styles.left}>
           <TouchableOpacity
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+            accessible={true}
+            focusable={true}
+            tvParallaxProperties={{ enabled: true }}
             onPress={() => {
               setIsLive(true);
               if (!player) return;
@@ -241,12 +172,12 @@ function Controls({
           >
             <Text style={{ textAlign: "center", color: "#fff" }}>
               LIVE{"  "}
-              <FontAwesomeIcon
-                size={10}
-                icon={faCircle}
-                color={isLive ? "#f00" : "#fff"}
-              />
             </Text>
+            <FontAwesomeIcon
+              size={10}
+              icon={faCircle}
+              color={isLive ? "#f00" : "#fff"}
+            />
           </TouchableOpacity>
         </View>
         <View style={styles.center}>
@@ -283,15 +214,22 @@ function Controls({
           </TouchableOpacity>
         </View>
         <View style={styles.right}>
-          <TouchableOpacity onPress={() => setShowSettings((prev) => !prev)}>
+          <TouchableOpacity
+            onPress={() => {
+              if (showSettings) return (showSettings = false);
+              showSettings = true;
+              setPopupData({
+                flag: true,
+                content: [
+                  <QualityItem key={0} e={["auto", null, null]} />,
+                  ...currentChannel.qualities.map((e, i) => (
+                    <QualityItem key={i + 1} e={e} />
+                  )),
+                ],
+              });
+            }}
+          >
             <FontAwesomeIcon icon={faGear} color="#fff" />
-            {showSettings && (
-              <Settings
-                onQualityChange={() => {}}
-                qualities={[]}
-                selectedQuality={"auto"}
-              />
-            )}
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => {
@@ -380,7 +318,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 5,
     minWidth: 150,
-    zIndex: 10,
+    zIndex: 100,
     pointerEvents: "none",
   },
   settingItem: {
@@ -389,6 +327,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 10,
     gap: 10,
+    zIndex: 101,
     flexDirection: "row",
   },
   settingItemLabel: {
@@ -403,8 +342,9 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     width: "70%",
     position: "absolute",
-    zIndex: 5,
+
     top: 0,
+    zIndex: 102,
   },
   eBtn: {
     width: 50,
@@ -426,3 +366,60 @@ const styles = StyleSheet.create({
     transition: "left 0.1s linear",
   },
 });
+const QualityItem = ({ e }) => {
+  const [currentChannel, setCurrentChannel] = currentChannelStore.useStore();
+  const [isFocuse, setIsFocuse] = useState(false);
+  const setPopupData = popupflagStrore.useStore({ getter: false });
+  return (
+    <TouchableOpacity
+      onFocus={() => setIsFocuse(true)}
+      onBlur={() => setIsFocuse(false)}
+      onPress={() => {
+        setPopupData({ flag: false });
+        if (currentChannel.quality == e[1]) {
+          setCurrentChannel({ quality: null });
+          return;
+        }
+        setCurrentChannel({ quality: e[1] });
+      }}
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        justifyContent: "space-between",
+        marginBottom: 10,
+        backgroundColor: isFocuse ? "#000" : "#fff",
+      }}
+    >
+      <Text style={styles.settingItemLabel}>
+        {e[0] != "auto"
+          ? `${e[0].split("x")[1]}p (${
+              e[2] / 1024 <= 800
+                ? (e[2] / 1024).toFixed(0) + "KB/s"
+                : (e[2] / 1024 / 1024).toFixed(2) + "MB/s"
+            })`
+          : "auto"}
+      </Text>
+      <View
+        style={[
+          {
+            width: 20,
+            height: 20,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderColor: "red",
+            borderWidth: 2,
+            borderStyle: "dashed",
+          },
+          currentChannel.quality == e[1]
+            ? { backgroundColor: "red", borderWidth: 0 }
+            : {},
+        ]}
+      >
+        {currentChannel.quality == e[1] && (
+          <FontAwesomeIcon icon={faCheck} color="#fff" />
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+};

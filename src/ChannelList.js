@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -25,7 +25,7 @@ const ChannelsList = ({ onChannelClick = () => {} }) => {
   const setLoadingState = loadingFlag.useStore({ getter: false });
 
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const focusedIndex = useRef(-1);
 
   useEffect(() => {
     console.log("Current Focused Index:", focusedIndex);
@@ -67,7 +67,12 @@ const ChannelsList = ({ onChannelClick = () => {} }) => {
 
           if (foundChannels.length <= 5) {
             const dbRes = await searchChannelsByName(text);
-            setLocalSearch([...foundChannels, ...dbRes]);
+            setLocalSearch([
+              ...foundChannels,
+              ...dbRes.filter(
+                (e) => !foundChannels.findIndex((c) => c.id == e.id) < 0
+              ),
+            ]);
             return;
           }
           setChannelsStore({
@@ -77,27 +82,10 @@ const ChannelsList = ({ onChannelClick = () => {} }) => {
       />
 
       {/* Upload button */}
-      <TouchableHighlight
-        style={[
-          styles.uploadButton,
-          focusedIndex === 1 && styles.focusedButton,
-        ]}
-        onPress={handleFileUpload}
-        onFocus={() => setFocusedIndex(1)}
-      >
-        <Text
-          style={[
-            styles.uploadButtonText,
-            focusedIndex === 1 && { color: "white" },
-          ]}
-        >
-          + Upload Channels File
-        </Text>
-      </TouchableHighlight>
-
+      <UploadFile handleFileUpload={handleFileUpload} />
       <FlatList
-        focusable={true}
-        isTVSelectable={true}
+        focusable={false}
+        tvFocusable={false}
         data={
           localSearch.length === 0 ? displayedChannels.channels : localSearch
         }
@@ -109,14 +97,10 @@ const ChannelsList = ({ onChannelClick = () => {} }) => {
             state={item.state}
             link={item.link}
             referer={item.referer}
-            index={index + 2}
-            selectedIndex={selectedIndex}
             onPress={() => {
               onChannelClick(item);
               setSelectedIndex(index + 2);
             }}
-            onFocus={() => setFocusedIndex(index + 2)}
-            focusedIndex={focusedIndex}
           />
         )}
         contentContainerStyle={{ paddingBottom: 100 }} // Ensures last item is always in view
@@ -126,23 +110,14 @@ const ChannelsList = ({ onChannelClick = () => {} }) => {
   );
 };
 
-const Channel = ({
-  name,
-  state,
-  number,
-  link,
-  referer,
-  onPress,
-  index,
-  selectedIndex,
-  onFocus,
-  focusedIndex,
-}) => {
+const Channel = ({ name, state, number, link, referer, onPress }) => {
+  const [isFocuse, setIsFocuse] = useState(false);
   return (
     <TouchableHighlight
-      onFocus={onFocus}
+      onFocus={() => setIsFocuse(true)}
+      onBlur={() => setIsFocuse(false)}
       onPress={() => onPress({ name, state, number, link, referer })}
-      style={[styles.channel, focusedIndex === index && styles.focusedChannel]}
+      style={[styles.channel, isFocuse && styles.focusedChannel]}
       focusable={true}
     >
       <Text style={styles.channelText}>
@@ -280,5 +255,23 @@ function LoadMore() {
     </TouchableHighlight>
   );
 }
+
+const UploadFile = ({ handleFileUpload }) => {
+  const [isFocuse, setIsFocuse] = useState(false);
+  return (
+    <TouchableHighlight
+      focusable={false}
+      tvFocusable={false}
+      style={[styles.uploadButton, isFocuse && styles.focusedButton]}
+      onPress={handleFileUpload}
+      onFocus={() => setIsFocuse(true)}
+      onBlur={() => setIsFocuse(false)}
+    >
+      <Text style={[styles.uploadButtonText, isFocuse && { color: "white" }]}>
+        + Upload Channels File
+      </Text>
+    </TouchableHighlight>
+  );
+};
 
 export default ChannelsList;
