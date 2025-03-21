@@ -18,7 +18,7 @@ import {
   faPlay,
   faUpRightAndDownLeftFromCenter,
 } from "@fortawesome/free-solid-svg-icons";
-import { fullScreenFlag } from "./data/flags";
+import { fullScreenFlag, loadingFlag } from "./data/flags";
 import { currentChannelStore } from "./data/data";
 
 const videoWidth = Dimensions.get("window").width * 0.5;
@@ -31,6 +31,7 @@ const videoWidth = Dimensions.get("window").width * 0.5;
  */
 export default function Player({ player }) {
   const [isFullScreen, setFullScreen] = fullScreenFlag.useStore();
+  const setLoadingState = loadingFlag.useStore({ getter: false });
   console.log("player init");
   let timer;
 
@@ -39,8 +40,17 @@ export default function Player({ player }) {
   useEffect(() => {
     if (!player) return;
     player.play();
+    player.addListener("statusChange", (data) => {
+      if (data.status == "loading") {
+        setLoadingState({ flag: true });
+        return;
+      }
+      setLoadingState({ flag: false });
+    });
+
     return () => {
       if (timer) clearInterval(timer);
+      player.removeAllListeners("statusChange");
     };
   }, [player]); // Ensure player is available when releasing
   useEffect(() => {

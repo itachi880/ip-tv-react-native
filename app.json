@@ -24,7 +24,7 @@
       "compileSdkVersion": 29,
       "targetSdkVersion": 29,
       "minSdkVersion": 21,
-      "permissions": ["POST_NOTIFICATIONS"],
+      "permissions": ["READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE"],
       "architectures": ["armeabi-v7a"]
     },
     "web": {
@@ -39,7 +39,8 @@
           "supportsPictureInPicture": true
         }
       ],
-      ["expo-document-picker"]
+      ["expo-document-picker"],
+      ["@react-native-tvos/config-tv"]
     ]
   }
 }

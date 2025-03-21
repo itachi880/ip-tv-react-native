@@ -21,10 +21,11 @@ const openDatabase = async () => {
 // Function to create tables just in case
 const createTables = async () => {
   try {
+    // await db.execAsync("DROP TABLE IF EXISTS channels");
     await db.execAsync(
       `CREATE TABLE IF NOT EXISTS channels (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
+          name VARCHAR(255) DEFAULT 'unknown',
           referer TEXT,
           link TEXT NOT NULL UNIQUE,
           state TEXT
@@ -50,16 +51,12 @@ const allQuery = async (query, params = []) => {
 
 // ✅ Insert channels into the database
 const insertChannels = async (channels) => {
-  for (const channel of channels) {
+  for (let i = 0; i < channels.length; i++) {
+    const channel = channels[i];
+
     try {
-      await db.runAsync(
-        `INSERT INTO channels (name, referer, link, state) VALUES (?, ?, ?, ?)`,
-        [
-          channel.name,
-          channel.referer || null,
-          channel.link,
-          channel.state || null,
-        ]
+      db.runSync(
+        `INSERT INTO channels (name, referer, link, state) VALUES ("${channel.name}", "${channel.referer}", "${channel.link}", "${channel.state}")`
       );
     } catch (error) {
       console.error("Error inserting channel:", error.message);
@@ -82,7 +79,7 @@ const getChannelsPaginated = async (limit, offset) => {
   try {
     return await db.getAllAsync("SELECT * FROM channels LIMIT ? OFFSET ?", [
       limit,
-      offset,
+      offset * limit,
     ]);
   } catch (error) {
     console.error("Error fetching paginated channels:", error.message);
@@ -102,7 +99,9 @@ const searchChannelsByName = async (query) => {
     return [];
   }
 };
-
+const countChannels = async () => {
+  return await db.getAllAsync("SELECT COUNT(*) FROM channels");
+};
 // Helper function to parse m3u8 data into channels
 const m3u8Parser = (file = "") => {
   const lines = file.split("\n");
@@ -136,4 +135,5 @@ export {
   getChannelsPaginated,
   searchChannelsByName,
   m3u8Parser,
+  countChannels,
 };

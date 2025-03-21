@@ -3,24 +3,26 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  TouchableHighlight,
   FlatList,
   StyleSheet,
-  GestureResponderEvent,
   Keyboard,
 } from "react-native";
-// @ts-ignore
+
 import Icon from "react-native-vector-icons/FontAwesome";
-import { insertChannels, m3u8Parser } from "./data/db";
+import { getChannelsPaginated, insertChannels, m3u8Parser } from "./data/db";
 import * as DocumentPicker from "expo-document-picker";
 import { channelsStore } from "./data/data";
+import { CHANNELS_QUERY_LIMIT, dbOffset, loadingFlag } from "./data/flags";
 
 const ChannelsList = ({ onChannelClick = () => {} }) => {
-  const displayedChannels = channelsStore.useStore({ setter: false });
+  const [displayedChannels, setChannelsStore] = channelsStore.useStore();
+  const setLoadingState = loadingFlag.useStore({ getter: false });
   const handleFileUpload = async () => {
     try {
+      setLoadingState({ flag: true });
       const result = await DocumentPicker.getDocumentAsync({
-        copyToCacheDirectory: true,
+        type: "*/*",
       });
       if (result.canceled) {
         console.log("File upload was canceled");
@@ -30,15 +32,10 @@ const ChannelsList = ({ onChannelClick = () => {} }) => {
 
       const fileContent = await fetch(fileUri).then((res) => res.text());
       const parsedChannels = m3u8Parser(fileContent);
-      console.log(
-        parsedChannels.map((e) => {
-          delete e.quality;
-          return e;
-        })
-      );
 
       await insertChannels(parsedChannels);
 
+      setLoadingState({ flag: false });
       alert("File uploaded and channels inserted!");
     } catch (error) {
       console.error("Error uploading file:", error);
@@ -47,20 +44,7 @@ const ChannelsList = ({ onChannelClick = () => {} }) => {
 
   console.log(Keyboard, displayedChannels);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const handleKeyPress = (e) => {
-    // Handle key presses for up/down navigation
-    if (e.nativeEvent.key === "ArrowUp" && currentItem > 0) {
-      setSelectedIndex(currentItem - 1);
-    } else if (
-      e.nativeEvent.key === "ArrowDown" &&
-      currentItem < items.length - 1
-    ) {
-      setSelectedIndex(currentItem + 1);
-    } else if (e.nativeEvent.key === "Enter") {
-      console.log(`Selected: ${items[currentItem]}`); // Action on "Enter"
-    }
-  };
-  useEffect(() => {}, [Keyboard]);
+
   return (
     <View style={styles.container}>
       {/* Search bar */}
@@ -75,15 +59,24 @@ const ChannelsList = ({ onChannelClick = () => {} }) => {
       </View>
 
       {/* Upload button */}
-      <TouchableOpacity
+      <TouchableHighlight
         style={[styles.uploadButton]}
         onPress={handleFileUpload}
         onFocus={() => {
+          console.log("foucuse");
           setSelectedIndex(1);
         }}
       >
-        <Text style={[styles.uploadButtonText]}>+ Upload Channels File</Text>
-      </TouchableOpacity>
+        <Text
+          style={[styles.uploadButtonText]}
+          onFocus={() => {
+            console.log("foucuse");
+            setSelectedIndex(1);
+          }}
+        >
+          + Upload Channels File
+        </Text>
+      </TouchableHighlight>
 
       <FlatList
         data={displayedChannels.channels}
@@ -95,13 +88,56 @@ const ChannelsList = ({ onChannelClick = () => {} }) => {
             state={item.state}
             link={item.link}
             refferer={item.referer}
-            onPress={(e) => onChannelClick(item)}
+            index={index + 2}
+            selectedIndex={selectedIndex}
+            onPress={(e) => {
+              onChannelClick(item);
+            }}
+            onFocus={() => {
+              setSelectedIndex(index + 2);
+            }}
           />
         )}
         ListFooterComponent={
-          <TouchableOpacity style={styles.loadMoreButton}>
+          <TouchableHighlight
+            style={styles.loadMoreButton}
+            onPress={async () => {
+              setLoadingState({ flag: true });
+              console.log("loading more start", dbOffset.offset);
+              const result = await getChannelsPaginated(
+                CHANNELS_QUERY_LIMIT,
+                dbOffset.offset
+              );
+              console.log("loading more fetched", result.length);
+              result.forEach((e, i) => {
+                result[i] = { ...e, quality: null, qualities: [] };
+              });
+              console.log("loading more maped");
+
+              if (result.length >= 20) {
+                dbOffset.offset++;
+              }
+              console.log("loading mor set");
+              setChannelsStore({
+                channels: [
+                  ...displayedChannels.channels,
+                  ...result.filter((e) => {
+                    if (
+                      displayedChannels.channels.findIndex(
+                        (channel) => channel.id == e.id
+                      ) > 0
+                    ) {
+                      return false;
+                    }
+                    return true;
+                  }),
+                ],
+              });
+              setLoadingState({ flag: false });
+            }}
+          >
             <Text style={styles.loadMoreText}>Load More</Text>
-          </TouchableOpacity>
+          </TouchableHighlight>
         }
       />
     </View>
@@ -117,20 +153,40 @@ const Channel = ({
   onPress,
   index,
   selectedIndex,
+  onFocus,
 }) => {
-  const [isFocuse, setIsFocuse] = useState(index == selectedIndex);
+  const [isFocuse, setIsFocuse] = useState(false);
+  const [isSelected, setIsSelected] = useState(index == selectedIndex);
+  console.log(isFocuse);
   return (
-    <TouchableOpacity
+    <TouchableHighlight
+      onFocus={() => {
+        console.log("foucuse");
+        setIsFocuse(true);
+      }}
+      onBlur={() => {
+        console.log("blure");
+        setIsFocuse(false);
+      }}
       onPress={(e) => {
         if (!onPress) return;
         onPress(e, { name, state, number, link, refferer });
       }}
-      style={styles.channel}
+      style={[styles.channel, !isFocuse ? styles.foucusedChannel : {}]}
     >
-      <Text style={styles.channelText}>
+      <Text
+        style={[styles.channelText]}
+        onFocus={() => {
+          setIsFocuse(true);
+        }}
+        onBlur={() => {
+          console.log("foucuse");
+          setIsFocuse(false);
+        }}
+      >
         {`${number} : ${name}`} {state === "OK" ? "✅" : "❓"}
       </Text>
-    </TouchableOpacity>
+    </TouchableHighlight>
   );
 };
 
@@ -184,6 +240,9 @@ const styles = StyleSheet.create({
   },
   channelText: {
     color: "white",
+  },
+  foucusedChannel: {
+    transform: [{ scale: 0.95 }],
   },
 });
 
