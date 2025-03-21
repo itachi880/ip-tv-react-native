@@ -18,8 +18,9 @@ import {
   faPlay,
   faUpRightAndDownLeftFromCenter,
 } from "@fortawesome/free-solid-svg-icons";
-import { fullScreenFlag, loadingFlag } from "./data/flags";
+import { fullScreenFlag } from "./data/flags";
 import { currentChannelStore } from "./data/data";
+import { updateChannelState } from "./data/db";
 
 const videoWidth = Dimensions.get("window").width * 0.5;
 
@@ -31,28 +32,25 @@ const videoWidth = Dimensions.get("window").width * 0.5;
  */
 export default function Player({ player }) {
   const [isFullScreen, setFullScreen] = fullScreenFlag.useStore();
-  const setLoadingState = loadingFlag.useStore({ getter: false });
-  console.log("player init");
+  const [showControlls, setShowControlls] = useState(true);
+  const playerRef = useRef(null);
   let timer;
-
-  const [currentChannel, setCurrentChannel] = currentChannelStore.useStore();
-
+  const currentChannel = currentChannelStore.useStore({ setter: false });
   useEffect(() => {
     if (!player) return;
     player.play();
-    player.addListener("statusChange", (data) => {
-      if (data.status == "loading") {
-        setLoadingState({ flag: true });
+    player.addListener("statusChange", async (data) => {
+      if (data.error && data.error.message.includes("code")) {
+        await updateChannelState(currentChannel.id, "NO");
         return;
       }
-      setLoadingState({ flag: false });
     });
-
     return () => {
-      if (timer) clearInterval(timer);
       player.removeAllListeners("statusChange");
+      if (timer) clearInterval(timer);
     };
   }, [player]); // Ensure player is available when releasing
+
   useEffect(() => {
     if (!player) return;
     player.replace({
@@ -67,6 +65,7 @@ export default function Player({ player }) {
       style={
         isFullScreen.flag ? styles.fullScreenContainer : styles.contentContainer
       }
+      ref={playerRef}
     >
       <VideoView
         style={styles.video}
@@ -79,12 +78,18 @@ export default function Player({ player }) {
         player={player}
         setFullScreen={setFullScreen}
         isFullScreen={isFullScreen}
+        showControlls={showControlls}
+        setShowControlls={setShowControlls}
       />
     </View>
   );
 }
 
-function Settings({ qualities = [], selectedQuality = null, onQualityChange }) {
+function Settings({
+  qualities = [],
+  selectedQuality = null,
+  onQualityChange = () => {},
+}) {
   const [qualitySelected, setSelectedQuality] = useState(
     !selectedQuality ? "auto" : selectedQuality
   );
@@ -171,7 +176,13 @@ function Settings({ qualities = [], selectedQuality = null, onQualityChange }) {
  * @param {ReturnType<useVideoPlayer>} param0.player
  * @returns
  */
-function Controls({ player, setFullScreen, isFullScreen }) {
+function Controls({
+  player,
+  setFullScreen,
+  isFullScreen,
+  showControlls,
+  setShowControlls,
+}) {
   const [isPlayed, setIsPlayed] = useState(player.playing ?? false);
   const [isLive, setIsLive] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -184,6 +195,12 @@ function Controls({ player, setFullScreen, isFullScreen }) {
   }, [isLive]);
 
   useEffect(() => {
+    // const timer = setTimeout(() => {
+    //   setShowControlls(false);
+    // }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
+  useEffect(() => {
     const timer = setInterval(() => {
       if (!player) return;
       console.log(player.currentTime, player.duration);
@@ -193,7 +210,13 @@ function Controls({ player, setFullScreen, isFullScreen }) {
   });
 
   return (
-    <View style={styles.controlsContainer}>
+    <View
+      style={
+        showControlls
+          ? styles.controlsContainer
+          : styles.hiddeControllsContainer
+      }
+    >
       <Slider
         style={styles.slider}
         thumbTintColor="#f00"
@@ -213,11 +236,11 @@ function Controls({ player, setFullScreen, isFullScreen }) {
             onPress={() => {
               setIsLive(true);
               if (!player) return;
-              player.currentTime = player.duration - 10;
+              player.currentTime = player.duration - 20;
             }}
           >
             <Text style={{ textAlign: "center", color: "#fff" }}>
-              LIVE
+              LIVE{"  "}
               <FontAwesomeIcon
                 size={10}
                 icon={faCircle}
@@ -321,6 +344,9 @@ const styles = StyleSheet.create({
     borderTopColor: "white",
     borderTopWidth: 0.5,
     paddingInline: 5,
+  },
+  hiddeControllsContainer: {
+    display: "none",
   },
   btns: {
     flexDirection: "row",

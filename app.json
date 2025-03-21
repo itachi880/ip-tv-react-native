@@ -20,12 +20,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.itachi880.myproject",
-      "compileSdkVersion": 29,
-      "targetSdkVersion": 29,
-      "minSdkVersion": 21,
-      "permissions": ["READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE"],
-      "architectures": ["armeabi-v7a"]
+      "package": "com.itachi880.myproject"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -35,7 +30,7 @@
       [
         "expo-video",
         {
-          "supportsBackgroundPlayback": true,
+          "supportsBackgroundPlayback": false,
           "supportsPictureInPicture": true
         }
       ],

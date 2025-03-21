@@ -102,7 +102,16 @@ const searchChannelsByName = async (query) => {
 const countChannels = async () => {
   return await db.getAllAsync("SELECT COUNT(*) FROM channels");
 };
-// Helper function to parse m3u8 data into channels
+const updateChannelState = async (id, state) => {
+  try {
+    await db.runAsync("UPDATE channels SET state = ? WHERE id = ?", [
+      state,
+      id,
+    ]);
+  } catch (error) {
+    console.error("Error updating channel state:", error.message);
+  }
+};
 const m3u8Parser = (file = "") => {
   const lines = file.split("\n");
   const channels = [];
@@ -136,4 +145,5 @@ export {
   searchChannelsByName,
   m3u8Parser,
   countChannels,
+  updateChannelState,
 };

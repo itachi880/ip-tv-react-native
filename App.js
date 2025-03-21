@@ -1,9 +1,8 @@
-import React, { useEffect, useState, useMemo } from "react";
-import { Dimensions, View } from "react-native";
+import React, { useEffect, useMemo, useRef } from "react";
+import { Dimensions, View, BackHandler } from "react-native";
 import {
   openDatabase,
   getChannelsPaginated,
-  getAllChannels,
   countChannels,
 } from "./src/data/db";
 import { channelsStore, currentChannelStore } from "./src/data/data";
@@ -20,12 +19,20 @@ import Player from "./src/Player";
 import LoadingBar from "./src/LoadingBar";
 
 export default function App() {
-  console.log("app init");
-
   const setChannelsData = channelsStore.useStore({ getter: false });
   const setCurrentChannel = currentChannelStore.useStore({ getter: false });
   const setLoadingState = loadingFlag.useStore({ getter: false });
-  const setFullScreen = fullScreenFlag.useStore({ getter: false });
+  const [IsFullScreen, setFullScreen] = fullScreenFlag.useStore();
+  const exitFullScreen = () => {
+    if (IsFullScreen.flag) {
+      setFullScreen({ flag: false });
+      return true;
+    }
+  };
+
+  // Exit full screen on back button press
+  BackHandler.addEventListener("hardwareBackPress", exitFullScreen);
+
   // Memoize the player to prevent re-creating it unnecessarily
   const player = useMemo(
     () =>
@@ -55,13 +62,30 @@ export default function App() {
       setChannelsData({ channels: channelsResponse });
     });
 
+    player.addListener("statusChange", (data) => {
+      if (data.status == "loading") {
+        setLoadingState({ flag: true });
+        return;
+      }
+
+      setLoadingState({ flag: false });
+    });
+
     // Cleanup on unmount
     return () => {
+      player.removeAllListeners("statusChange");
       player.release();
+      BackHandler.removeEventListener("hardwareBackPress", exitFullScreen);
     };
   }, [player]);
 
   const { width, height } = Dimensions.get("window");
+
+  // Create refs for focus handling
+  const channelsListRef = useRef(null);
+  const playerRef = useRef(null);
+
+  // TVEventHandler to handle remote key events
 
   return (
     <View
@@ -77,6 +101,7 @@ export default function App() {
       }}
     >
       <ChannelsList
+        ref={channelsListRef}
         onChannelClick={async (item) => {
           console.log("change to :", item);
           setFullScreen({ flag: true });
@@ -84,8 +109,14 @@ export default function App() {
           const qualities = await getChannelQualitys(item.link, item.referer);
           setCurrentChannel({ ...item, qualities });
         }}
+        focusable={true} // Make it focusable
+        hasTVPreferredFocus={true} // Give it initial focus if needed
       />
-      <Player player={player} />
+      <Player
+        ref={playerRef}
+        player={player}
+        focusable={true} // Make it focusable
+      />
       <LoadingBar />
     </View>
   );
