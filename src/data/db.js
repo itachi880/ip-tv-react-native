@@ -146,4 +146,5 @@ export {
   m3u8Parser,
   countChannels,
   updateChannelState,
+  db,
 };

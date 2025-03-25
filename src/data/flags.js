@@ -6,3 +6,7 @@ export const dbOffset = {
 };
 export const loadingFlag = createStore({ flag: false });
 export const popupflagStrore = createStore({ flag: false, content: [] });
+export const TV_KEYBORD_EVENT = {
+  sequence: [],
+  isTextFieldMode: false,
+};

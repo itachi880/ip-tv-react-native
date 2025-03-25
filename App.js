@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo } from "react";
-import { Dimensions, View, BackHandler } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { Dimensions, View, BackHandler, useTVEventHandler } from "react-native";
 import {
   openDatabase,
   getChannelsPaginated,
@@ -11,6 +11,7 @@ import {
   dbOffset,
   fullScreenFlag,
   loadingFlag,
+  TV_KEYBORD_EVENT,
 } from "./src/data/flags";
 import { getChannelQualitys } from "./src/utils";
 import { createVideoPlayer } from "expo-video";
@@ -18,8 +19,9 @@ import ChannelsList from "./src/ChannelList";
 import Player from "./src/Player";
 import LoadingBar from "./src/LoadingBar";
 import PopUp from "./src/PopUp";
+import IPtvDBInterface from "./src/DB_UI_INTEFACE";
 
-export default function App() {
+function IP_TV_INTERFACE() {
   const setChannelsData = channelsStore.useStore({ getter: false });
   const setCurrentChannel = currentChannelStore.useStore({ getter: false });
   const setLoadingState = loadingFlag.useStore({ getter: false });
@@ -73,11 +75,9 @@ export default function App() {
       setLoadingState({ flag: false });
     });
 
-    // Cleanup on unmount
     return () => {
       player.removeAllListeners("statusChange");
       player.release();
-      // BackHandler.removeEventListener("hardwareBackPress", exitFullScreen);
     };
   }, [player]);
 
@@ -102,12 +102,35 @@ export default function App() {
           setFullScreen({ flag: true });
           setLoadingState({ flag: true });
           const qualities = await getChannelQualitys(item.link, item.referer);
-          setCurrentChannel({ ...item, qualities });
+          setCurrentChannel({ ...item, qualities, quality: null });
         }}
       />
       <Player player={player} />
       <PopUp />
       <LoadingBar />
     </View>
+  );
+}
+
+export default function App() {
+  useTVEventHandler((event) => {
+    console.log(event);
+    if (TV_KEYBORD_EVENT.isTextFieldMode) return;
+    if (isNaN(+event.eventType)) {
+      TV_KEYBORD_EVENT.sequence = [];
+      return;
+    }
+    TV_KEYBORD_EVENT.sequence.push(event.eventType);
+    console.log(TV_KEYBORD_EVENT.sequence);
+    if (TV_KEYBORD_EVENT.sequence.join("") == "20252025") {
+      TV_KEYBORD_EVENT.sequence = [];
+      setDb_interface(true);
+    }
+  });
+  const [isDB_INTERFACE, setDb_interface] = useState(false);
+  return !isDB_INTERFACE ? (
+    <IP_TV_INTERFACE />
+  ) : (
+    <IPtvDBInterface setDb_interface={setDb_interface} />
   );
 }

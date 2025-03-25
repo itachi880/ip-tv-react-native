@@ -41,11 +41,20 @@ export default function Player({ player }) {
     if (!player) return;
     player.play();
     player.addListener("statusChange", async (data) => {
-      if (data.error && data.error.message.includes("code")) {
+      if (
+        data.error &&
+        data.error.message.includes("code") &&
+        currentChannel.state != "NO"
+      ) {
         await updateChannelState(currentChannel.id, "NO");
+
         return;
       }
+      if (data.status == "readyToPlay" && currentChannel.state != "OK") {
+        await updateChannelState(currentChannel.id, "OK");
+      }
     });
+
     return () => {
       player.removeAllListeners("statusChange");
       if (timer) clearInterval(timer);
@@ -113,16 +122,8 @@ function Controls({ player, setFullScreen, isFullScreen, showControlls }) {
   }, [isLive]);
 
   useEffect(() => {
-    // const timer = setTimeout(() => {
-    //   setShowControlls(false);
-    // }, 5000);
-    // return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
     const timer = setInterval(() => {
       if (!player) return;
-      console.log(player.currentTime, player.duration);
       setIsPlayed(player.playing);
     }, 500);
     return () => clearInterval(timer);

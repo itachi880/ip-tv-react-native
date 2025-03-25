@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -17,19 +17,17 @@ import {
 } from "./data/db";
 import * as DocumentPicker from "expo-document-picker";
 import { channelsStore } from "./data/data";
-import { CHANNELS_QUERY_LIMIT, dbOffset, loadingFlag } from "./data/flags";
+import {
+  CHANNELS_QUERY_LIMIT,
+  dbOffset,
+  loadingFlag,
+  TV_KEYBORD_EVENT,
+} from "./data/flags";
 
 const ChannelsList = ({ onChannelClick = () => {} }) => {
   const [displayedChannels, setChannelsStore] = channelsStore.useStore();
   const [localSearch, setLocalSearch] = useState([]);
   const setLoadingState = loadingFlag.useStore({ getter: false });
-
-  const [selectedIndex, setSelectedIndex] = useState(-1);
-  const focusedIndex = useRef(-1);
-
-  useEffect(() => {
-    console.log("Current Focused Index:", focusedIndex);
-  }, [focusedIndex]);
 
   const handleFileUpload = async () => {
     try {
@@ -48,11 +46,13 @@ const ChannelsList = ({ onChannelClick = () => {} }) => {
 
       await insertChannels(parsedChannels);
 
-      setLoadingState({ flag: false });
-      alert("File uploaded and channels inserted!");
+      alert(
+        "File uploaded and channels inserted! realod the app to access new chanels"
+      );
     } catch (error) {
       console.error("Error uploading file:", error);
     }
+    setLoadingState({ flag: false });
   };
 
   return (
@@ -60,17 +60,18 @@ const ChannelsList = ({ onChannelClick = () => {} }) => {
       {/* Search bar */}
       <SearchInput
         onSubmit={async (text) => {
+          console.log("search for :", text);
           if (text.trim().length == 0) return setLocalSearch([]);
           const foundChannels = displayedChannels.channels.filter((e) =>
             e.name.toLowerCase().includes(text.toLowerCase())
           );
-
+          console.log("local result:", foundChannels.length);
           if (foundChannels.length <= 5) {
             const dbRes = await searchChannelsByName(text);
             setLocalSearch([
               ...foundChannels,
               ...dbRes.filter(
-                (e) => !foundChannels.findIndex((c) => c.id == e.id) < 0
+                (e) => foundChannels.findIndex((c) => c.id == e.id) < 0
               ),
             ]);
             return;
@@ -99,7 +100,6 @@ const ChannelsList = ({ onChannelClick = () => {} }) => {
             referer={item.referer}
             onPress={() => {
               onChannelClick(item);
-              setSelectedIndex(index + 2);
             }}
           />
         )}
@@ -203,10 +203,14 @@ function SearchInput({ onSubmit = (text = "") => {} }) {
         placeholder="Search channel"
         cursorColor={"#000"}
         style={styles.input}
+        onFocus={() => {
+          TV_KEYBORD_EVENT.isTextFieldMode = true;
+        }}
       />
     </View>
   );
 }
+
 function LoadMore() {
   const [displayedChannels, setChannelsStore] = channelsStore.useStore();
   const setLoadingState = loadingFlag.useStore({ getter: false });
